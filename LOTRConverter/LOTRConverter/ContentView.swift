@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct ContentView: View {
      
@@ -16,6 +17,11 @@ struct ContentView: View {
     
     @State var leftCurrency: Currency = .silverPiece
     @State var rightCurrency: Currency = .goldPiece
+    
+    @FocusState var leftFocus
+    @FocusState var rightFocus
+    
+    let currencyTip = CurrencyTip()
     
     var body: some View {
        
@@ -62,11 +68,14 @@ struct ContentView: View {
                         .padding(.bottom, -5)
                         .onTapGesture {
                             showSelectCurrency.toggle()
+                            currencyTip.invalidate(reason: .actionPerformed)
                         }
+                        .popoverTip(currencyTip, arrowEdge: .bottom)
                         
                         //Text Field
                         TextField("Amount", text: $leftAmount)
                             .textFieldStyle(.roundedBorder)
+                            .focused($leftFocus)
                     }
                     
                     // Equal Sign
@@ -95,18 +104,21 @@ struct ContentView: View {
                         .padding(.bottom, -5)
                         .onTapGesture {
                             showSelectCurrency.toggle()
+                            currencyTip.invalidate(reason: .actionPerformed)
                         }
                         
                         //Text Field
                         TextField("Amount", text: $rightAmount)
                             .textFieldStyle(.roundedBorder)
                             .multilineTextAlignment(.trailing)
+                            .focused($rightFocus)
                     }
 
                 }
                 .padding()
                 .background(.black.opacity(0.5))
                 .clipShape(.capsule)
+                .keyboardType(.decimalPad)
                 
                 Spacer()
                 
@@ -126,8 +138,34 @@ struct ContentView: View {
                                     }
 
             }
-            .border(.blue)
+//            .border(.blue)
         }
+        .task {
+            try? Tips.configure()
+        }
+        
+        .onChange(of: leftAmount) {
+            if leftFocus {
+                rightAmount = leftCurrency.convert(leftAmount,
+                                                   to: rightCurrency)
+            }
+        }
+        .onChange(of: rightAmount) {
+            if rightFocus {
+                leftAmount = rightCurrency.convert(rightAmount,
+                                                   to: leftCurrency)
+            }
+        }
+        .onChange(of: rightCurrency, {
+            rightAmount = leftCurrency.convert(leftAmount,
+                                               to: rightCurrency)
+        })
+        
+        .onChange(of: leftCurrency, {
+            leftAmount = rightCurrency.convert(rightAmount,
+                                               to: leftCurrency)
+        })
+        
         .sheet(isPresented: $showExchangeInfo) {
             ExchangeInfo()
         }
